@@ -202,6 +202,58 @@ export function demoInsights() {
   };
 }
 
+export function demoCoverage() {
+  const days = 28;
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  const per_machine = MACHINE_IDS.map((id, slot) => {
+    const daily = Array.from({ length: days }, (_, i) => {
+      const d = new Date(start);
+      d.setUTCDate(start.getUTCDate() + i);
+      const gapDay = i % (7 + slot) === 3;
+      return {
+        date: d.toISOString().slice(0, 10),
+        n_samples: gapDay ? 0 : 320 + ((i + slot * 3) % 40),
+        median_interval_s: 240,
+        max_gap_s: gapDay ? 3600 : 480,
+      };
+    });
+    const gaps = daily
+      .filter((row) => row.n_samples === 0)
+      .map((row) => ({
+        from: `${row.date}T00:00:00Z`,
+        to: `${row.date}T01:00:00Z`,
+        duration_s: 3600,
+      }));
+    return {
+      machine_id: id,
+      history_floor: daily[0]?.date ?? null,
+      last_sample_at: new Date().toISOString(),
+      n_samples: [12919, 13014, 13112][slot],
+      median_interval_s: 240,
+      daily,
+      gaps,
+    };
+  });
+  return {
+    per_machine,
+    batches: {
+      total: 9,
+      complete: 8,
+      usable_for_training: 7,
+      with_excel_log: 6,
+      with_fault: 1,
+    },
+    excel: { rows_parsed: 24, rows_unmatched: 2, unmatched_detail: [], closure_error_pct: {} },
+    unmapped_process_values: [],
+    ingest_failures: Array.from({ length: 7 }, (_, i) => ({
+      at: new Date(Date.now() - i * 86_400_000).toISOString(),
+      status: "demo_note",
+      detail: "Vercel demo — no live panel pull",
+    })),
+  };
+}
+
 export const ASSISTANT_SYSTEM = `You are the HTPP Digital Shadow assistant for industrial batch reactors (Plant Floor: R1 Unit 1, R2 Unit 2, R3 Unit 3).
 
 Rules:

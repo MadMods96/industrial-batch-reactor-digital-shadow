@@ -862,3 +862,27 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
   .sim-layout { grid-template-columns: 1fr; }
   .sim-compare-row { grid-template-columns: 1fr; }
 }
+
+.coverage-list { display: grid; gap: 12px; margin-top: 18px; }
+.coverage-card { padding: 14px 16px; }
+.coverage-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.coverage-head .mono { color: var(--muted); font-size: 13px; }
+.coverage-heat {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10px, 1fr));
+  gap: 3px;
+}
+.coverage-heat span {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  min-height: 10px;
+}
+.coverage-heat .heat-on { background: color-mix(in srgb, var(--brand) 78%, #0b3d2e); }
+.coverage-heat .heat-off { background: color-mix(in srgb, var(--line) 80%, white); }
