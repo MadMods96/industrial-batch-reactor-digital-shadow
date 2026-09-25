@@ -74,7 +74,7 @@ export function liveSnapshot() {
   return {
     type: "snapshot",
     server_time: now,
-    model_version: "vercel-demo-v1",
+    model_version: "excel-seed-v1",
     machines,
   };
 }
@@ -131,36 +131,52 @@ export function demoSimulate(body: {
   const moisture = body.moisture_pct;
   const peak = body.target_peak_tr_c;
   const mid = body.machine_id ?? 1093;
-  // Per-reactor bias so side-by-side compare is not identical in demo mode.
-  const bias =
-    mid === 1093 ? { oil: 0, carbon: 0.4, steel: -0.2, time: 0, heat: "R1 tends slightly slower to peak." }
-    : mid === 1094 ? { oil: 1.2, carbon: -0.6, steel: 0.1, time: -18, note: "R2 usually clearer oil cut in plant logs." }
-    : { oil: -0.8, carbon: 0.8, steel: 0.4, time: 12, note: "R3 often longer cool-down in demo history." };
-
-  const oil = Math.max(28, Math.min(52, 48 - moisture * 1.1 + (feed - 10000) * 0.0004 + bias.oil));
-  const carbon = Math.max(20, Math.min(40, 35 - (peak - 450) * 0.02 + bias.carbon));
-  const steel = Math.max(8, Math.min(18, 12 + moisture * 0.2 + bias.steel));
-  const duration = Math.round(360 + feed / 80 + moisture * 8 + (peak - 430) * 0.4 + bias.time);
+  type Row = {
+    machine_id: number;
+    oil_yield_pct: number | null;
+    carbon_yield_pct: number | null;
+    steel_yield_pct: number | null;
+    total_duration_min: number | null;
+    feed_mass_kg: number | null;
+    moisture_pct: number | null;
+  };
+  const history = (plantBatches as { batches: Row[] }).batches.filter((b) => b.machine_id === mid);
+  const avg = (key: keyof Row, fallback: number) => {
+    const vals = history.map((b) => b[key]).filter((v): v is number => typeof v === "number");
+    if (!vals.length) return fallback;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+  const baseOil = avg("oil_yield_pct", 40);
+  const baseCarbon = avg("carbon_yield_pct", 33);
+  const baseSteel = avg("steel_yield_pct", 12);
+  const baseTime = avg("total_duration_min", 2000);
+  const baseFeed = avg("feed_mass_kg", 10500);
+  const moistKg = avg("moisture_pct", 600);
+  const moistPct = baseFeed > 0 ? (moistKg / baseFeed) * 100 : 6;
+  const oil = Math.max(28, Math.min(52, baseOil - (moisture - moistPct) * 0.8 + ((feed - baseFeed) / baseFeed) * 2));
+  const carbon = Math.max(20, Math.min(40, baseCarbon - (peak - 450) * 0.02));
+  const steel = Math.max(8, Math.min(18, baseSteel + (moisture - moistPct) * 0.1));
+  const duration = Math.round(baseTime + (feed - baseFeed) * 0.05 + (moisture - moistPct) * 15 + (peak - 450) * 0.8);
   const warnings: string[] = [];
-  if (feed < 4500 || feed > 14000) warnings.push("Feed mass is outside the usual demo range.");
-  if (moisture < 1 || moisture > 12) warnings.push("Moisture is outside the usual demo range.");
+  if (feed < 4500 || feed > 14000) warnings.push("Feed mass is outside the usual plant-log range.");
+  if (moisture < 1 || moisture > 12) warnings.push("Moisture is outside the usual plant-log range.");
   if (peak < 400 || peak > 500) warnings.push("Peak Tr is outside the usual demo range.");
-  // Soft nudge when inputs sit near edge of logged band shown in the UI copy.
   if (feed < 9500 || feed > 12900 || moisture > 11 || moisture < 3) {
     warnings.push("Outside typical history — treat as a rough guide.");
   }
+  const label = mid === 1093 ? "R1" : mid === 1094 ? "R2" : "R3";
   return {
     input_echo: body,
-    model_version: "vercel-demo-v1",
+    model_version: "excel-seed-v1",
     predicted_total_duration_min: duration,
     extrapolation_warnings: [
-      `Vercel demo estimate for ${mid === 1093 ? "R1" : mid === 1094 ? "R2" : "R3"}. ${bias.note}`,
+      `${label} estimate anchored on ${history.length} plant log batches (Excel seed).`,
       ...warnings,
     ],
     phases: [
-      { process_state: "heating", duration_min: Math.round(duration * (mid === 1094 ? 0.32 : 0.35)) },
-      { process_state: "holding", duration_min: Math.round(duration * (mid === 1094 ? 0.43 : 0.4)) },
-      { process_state: "cooling", duration_min: Math.round(duration * (mid === 1146 ? 0.28 : 0.25)) },
+      { process_state: "heating", duration_min: Math.round(duration * 0.35) },
+      { process_state: "holding", duration_min: Math.round(duration * 0.4) },
+      { process_state: "cooling", duration_min: Math.round(duration * 0.25) },
     ],
     predicted_yields: {
       oil_yield_pct: { p10: oil - 3, p50: oil, p90: oil + 3 },
@@ -171,6 +187,7 @@ export function demoSimulate(body: {
 }
 
 export function demoBriefing() {
+  const n = (plantBatches as { n_batches?: number }).n_batches ?? 0;
   return {
     generated_at: new Date().toISOString(),
     plant: "Plant Floor",
@@ -179,24 +196,25 @@ export function demoBriefing() {
       { id: "R2", state: "holding", tr_c: 412, note: "Near peak hold" },
       { id: "R3", state: "cooling", tr_c: 265, note: "Cooldown-down after hold" },
     ],
-    coverage_note: "Demo dataset on Vercel — not live panel telemetry.",
+    coverage_note: `Floor live view is demo telemetry; Batches/What-if use ${n} anonymized Excel plant-log rows.`,
   };
 }
 
 export function demoInsights() {
   const key = process.env.HTPP_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || "";
   const wid = process.env.HTPP_ANTHROPIC_WORKSPACE_ID || process.env.ANTHROPIC_WORKSPACE_ID || "";
+  const n = (plantBatches as { n_batches?: number }).n_batches ?? 0;
   return {
     insights: [
       {
         severity: "info",
-        title: "R2 is holding near peak",
-        detail: "Demo signal: Unit 2 looks stable around 412 °C. Watch pressure if hold runs long.",
+        title: `${n} plant-log batches loaded`,
+        detail: "Batches come from the anonymized Excel mass log (feed, moisture, oil/carbon/steel, time).",
       },
       {
         severity: "warning",
-        title: "Demo mode on Vercel",
-        detail: "Floor data is a seeded digital-shadow demo (not live PLC). Claude still works if API keys are set.",
+        title: "Floor is still demo live view",
+        detail: "3D floor uses seeded telemetry. Growing history needs DuckDB/DB — Vercel does not append new Excel rows automatically.",
       },
     ],
     claude_configured: Boolean(key.trim()) && Boolean(wid.trim()),
@@ -209,16 +227,19 @@ export function demoCoverage() {
   const days = 28;
   const start = new Date();
   start.setUTCDate(start.getUTCDate() - (days - 1));
+  const all = (plantBatches as { batches: Array<{ machine_id: number; log_date: string }> }).batches;
   const per_machine = MACHINE_IDS.map((id, slot) => {
+    const mine = all.filter((b) => b.machine_id === id);
     const daily = Array.from({ length: days }, (_, i) => {
       const d = new Date(start);
       d.setUTCDate(start.getUTCDate() + i);
-      const gapDay = i % (7 + slot) === 3;
+      const date = d.toISOString().slice(0, 10);
+      const hits = mine.filter((b) => b.log_date === date).length;
       return {
-        date: d.toISOString().slice(0, 10),
-        n_samples: gapDay ? 0 : 320 + ((i + slot * 3) % 40),
+        date,
+        n_samples: hits > 0 ? hits * 300 : 0,
         median_interval_s: 240,
-        max_gap_s: gapDay ? 3600 : 480,
+        max_gap_s: hits > 0 ? 480 : 3600,
       };
     });
     const gaps = daily
@@ -230,9 +251,9 @@ export function demoCoverage() {
       }));
     return {
       machine_id: id,
-      history_floor: daily[0]?.date ?? null,
+      history_floor: mine[0]?.log_date ?? daily[0]?.date ?? null,
       last_sample_at: new Date().toISOString(),
-      n_samples: [12919, 13014, 13112][slot],
+      n_samples: mine.length,
       median_interval_s: 240,
       daily,
       gaps,
@@ -241,19 +262,15 @@ export function demoCoverage() {
   return {
     per_machine,
     batches: {
-      total: 9,
-      complete: 8,
-      usable_for_training: 7,
-      with_excel_log: 6,
-      with_fault: 1,
+      total: all.length,
+      complete: all.length,
+      usable_for_training: all.length,
+      with_excel_log: all.length,
+      with_fault: 0,
     },
-    excel: { rows_parsed: 24, rows_unmatched: 2, unmatched_detail: [], closure_error_pct: {} },
+    excel: { rows_parsed: all.length, rows_unmatched: 0, unmatched_detail: [], closure_error_pct: {} },
     unmapped_process_values: [],
-    ingest_failures: Array.from({ length: 7 }, (_, i) => ({
-      at: new Date(Date.now() - i * 86_400_000).toISOString(),
-      status: "demo_note",
-      detail: "Vercel demo — no live panel pull",
-    })),
+    ingest_failures: [],
   };
 }
 
@@ -265,4 +282,4 @@ Rules:
 - Write for plant operators in plain English. Markdown bullets OK.
 - Never invent or reveal customer, site, operator, email, password, or API credentials.
 - Keep answers short: 2–6 sentences or a tight bullet list.
-- This may be demo data on Vercel; say so if asked whether it is live PLC.`;
+- Batch history may come from an anonymized Excel plant log on Vercel; say so if asked whether Floor is live PLC.`;
