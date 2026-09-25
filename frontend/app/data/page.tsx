@@ -3,25 +3,23 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
 
-type Day = { date: string; nSamples: number };
-type MachineCov = {
-  machineId: number;
-  nSamples: number;
-  medianIntervalS: number | null;
-  daily: Day[];
-  gaps: Array<{ durationS: number }>;
-};
-
 type Coverage = {
-  perMachine: MachineCov[];
+  note?: string;
+  perMachine: Array<{
+    machineId: number;
+    nSamples: number;
+    nExcelBatches?: number;
+    note?: string;
+  }>;
   batches: {
     total: number;
     complete: number;
     usableForTraining: number;
     withExcelLog: number;
-    withFault: number;
+    withFault: number | null;
+    missingDurations?: number;
   };
-  ingestFailures: unknown[];
+  excel: { rowsParsed: number; closureStatus?: string };
 };
 
 const LABELS: Record<number, string> = {
@@ -44,45 +42,34 @@ export default function DataPage() {
     <main className="page">
       <div className="kicker">Data quality</div>
       <h1 style={{ fontWeight: 500 }}>Coverage, gaps, and what the panel did not say</h1>
+      <p style={{ color: "var(--muted)", maxWidth: "70ch" }}>
+        Until panel telemetry is ingested, this page reports <strong>Excel batch counts</strong>, not 4-minute
+        sample coverage. Closure is <span className="mono">not_measurable</span> without reliable gas.
+      </p>
       {error && <div className="banner">{error}</div>}
+      {data?.note && <div className="banner">{data.note}</div>}
 
       <div className="coverage-list">
-        {(data?.perMachine ?? []).map((machine) => {
-          const longGaps = machine.gaps.filter((g) => g.durationS >= 1800).length;
-          return (
-            <section key={machine.machineId} className="panel coverage-card">
-              <div className="coverage-head">
-                <strong>{LABELS[machine.machineId] ?? `Machine ${machine.machineId}`}</strong>
-                <span className="mono">
-                  {machine.nSamples.toLocaleString()} samples · {longGaps} gaps over 30 min
-                  {machine.medianIntervalS != null ? ` · ~${Math.round(machine.medianIntervalS / 60)} min median` : ""}
-                </span>
-              </div>
-              <div className="coverage-heat" aria-label={`Coverage for ${machine.machineId}`}>
-                {machine.daily.map((day) => (
-                  <span
-                    key={day.date}
-                    title={`${day.date}: ${day.nSamples} samples`}
-                    className={day.nSamples > 0 ? "heat-on" : "heat-off"}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {(data?.perMachine ?? []).map((machine) => (
+          <section key={machine.machineId} className="panel coverage-card">
+            <div className="coverage-head">
+              <strong>{LABELS[machine.machineId] ?? `Machine ${machine.machineId}`}</strong>
+              <span className="mono">
+                {machine.nExcelBatches ?? 0} Excel batches · {machine.nSamples} telemetry samples
+              </span>
+            </div>
+            <p style={{ margin: 0, color: "var(--muted)" }}>{machine.note}</p>
+          </section>
+        ))}
       </div>
-
-      {data && data.ingestFailures.length > 0 && (
-        <div className="banner">Ingest failures recorded: {data.ingestFailures.length}.</div>
-      )}
 
       {data && (
         <div className="panel" style={{ padding: 16, marginTop: 16 }}>
-          <div className="kicker">Batches</div>
+          <div className="kicker">Excel summary</div>
           <p className="mono" style={{ margin: "8px 0 0" }}>
-            total {data.batches.total} · complete {data.batches.complete} · usable{" "}
-            {data.batches.usableForTraining} · with excel {data.batches.withExcelLog} · with fault{" "}
-            {data.batches.withFault}
+            total {data.batches.total} · complete {data.batches.complete} · usable train{" "}
+            {data.batches.usableForTraining} · missing durations {data.batches.missingDurations ?? "—"} ·
+            closure {data.excel.closureStatus ?? "unknown"}
           </p>
         </div>
       )}

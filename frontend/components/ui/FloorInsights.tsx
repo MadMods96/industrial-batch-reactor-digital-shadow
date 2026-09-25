@@ -62,7 +62,7 @@ export function FloorInsights() {
       <section className="insights-half panel" aria-label="Plant insights">
         <div className="insights-half-head">
           <div>
-            <div className="kicker">Live insights</div>
+            <div className="kicker">Insights</div>
             <strong>Alerts & plant notes</strong>
           </div>
           <span className="mono floor-insights-count">{insights.length || 0}</span>

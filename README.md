@@ -98,9 +98,11 @@ Customer or site names must **not** be hardcoded in source. Put them only in `.e
 
 ## Deploy (recommended)
 
-**Vercel-only (demo + Ask):** set Root Directory to `frontend`. Same-origin `/api` serves demo plant data and Claude. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+**Vercel demo** (current): Excel-seeded Batches / What-if + synthetic floor. Persistent **DEMO DATA** banner. No Anthropic calls from the site — use **Claude Desktop + MCP** ([docs/MCP-CLAUDE.md](docs/MCP-CLAUDE.md)).
 
-Optional later: a Python host (Render / Railway / Fly) for live PLC + DuckDB fitted models. Not required for the public demo UI.
+Turn on **Vercel Deployment Protection** until written plant consent exists (Fix Brief 003 P0-1).
+
+Optional later: FastAPI + DuckDB on a small VM for live panel ingest; set `NEXT_PUBLIC_API_BASE_URL` and retire mock routes.
 
 ---
 

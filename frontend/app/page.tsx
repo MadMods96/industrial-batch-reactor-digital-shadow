@@ -19,7 +19,6 @@ export default function OverviewPage() {
   const [webgl, setWebgl] = useState(true);
   const [hud, setHud] = useState<Record<number, ReturnType<typeof sampleMachine> & { machine: MachineLive }>>({});
   const status = useLive((s) => s.status);
-  const version = useLive((s) => s.modelVersion);
   const alarms = useLive((s) => s.alarms);
   const camera = useLive((s) => s.camera);
   const post = useLive((s) => s.post);
@@ -50,7 +49,7 @@ export default function OverviewPage() {
           <div className="floor-brand-mark">HTPP</div>
           <div className="mono floor-status-line">
             <span className={`dot ${status === "live" ? "ok" : "stale"}`} />
-            {status} · {version ?? "no model"} · IST
+            DEMO · {status === "live" ? "seed synced" : status} · linear_fallback · IST
           </div>
           <div className="stack-legend" aria-label="Tower light meaning">
             <span><i className="stack-dot green" /> Running</span>
@@ -94,10 +93,13 @@ export default function OverviewPage() {
                     <Metric label="Ps" value={<ValueWithUnit value={row?.ps} unit="bar" digits={2} />} />
                   </div>
                   <div className="machine-card-foot">
-                    Batch {machine?.batchNo ?? "—"}
+                    {machine?.batchNo != null ? `Batch ${machine.batchNo}` : "No panel batch #"}
                     <span>·</span>
                     <ValueWithUnit value={machine?.batchElapsedMin} unit="min" digits={0} />
-                    {row?.stale ? <span className="stale-tag">stale</span> : null}
+                    <span className="stale-tag">demo</span>
+                    {machine?.interpolationMode ? (
+                      <span className="stale-tag">{machine.interpolationMode}</span>
+                    ) : null}
                   </div>
                 </button>
               );

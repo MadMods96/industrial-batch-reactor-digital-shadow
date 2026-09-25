@@ -1,0 +1,19 @@
+{
+  "name": "htpp-digital-shadow-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "htpp-shadow-mcp": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

@@ -35,7 +35,7 @@ export type MachineLive = {
   };
   interpolationMode: "model" | "linear_fallback";
   dense: Dense;
-  residual: { rTC: number | null; severity: string; alarm: boolean };
+  residual: { rTC: number | null; severity: string; alarm: boolean } | null;
   projection: {
     predictedEndAt: string | null;
     predictedTotalDurationMin: number | null;
@@ -150,19 +150,17 @@ export function sampleTr(machine: MachineLive, now: number): number {
 
 export function sampleMachine(machine: MachineLive, now: number) {
   const stale = machine.stalenessS > 600 || machine.online === false;
-  const idx = stale ? 0 : Math.max(0, Math.min(machine.dense.trC.length - 1, Math.floor((now - machine.anchorMs) / 1000 / (machine.dense.stepS || 1))));
-  let tr = machine.dense.trC[idx] ?? machine.measured.trC ?? 0;
-  if (!stale && machine.blendUntil > now && machine.blendFromTr != null) {
-    const u = 1 - (machine.blendUntil - now) / 400;
-    const ease = u * u * (3 - 2 * u);
-    tr = machine.blendFromTr + (tr - machine.blendFromTr) * ease;
-  }
+  // Prefer measured for HUD cards (Fix Brief 003 F1). Dense is only a hold buffer.
+  const tr = machine.measured.trC ?? 0;
+  const ts = machine.measured.tsC ?? 0;
+  const pr = machine.measured.prBar ?? 0;
+  const ps = machine.measured.psBar ?? 0;
   return {
     tr,
-    ts: machine.dense.tsC[idx] ?? machine.measured.tsC ?? 0,
-    pr: machine.dense.prBar[idx] ?? machine.measured.prBar ?? 0,
-    ps: machine.dense.psBar[idx] ?? machine.measured.psBar ?? 0,
-    process: stale ? machine.processState : machine.dense.processState[idx] ?? machine.processState,
+    ts,
+    pr,
+    ps,
+    process: machine.processState,
     fault: machine.faultState,
     stale,
     roh: machine.measured.rohCPerMin ?? 0,

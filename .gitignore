@@ -13,6 +13,7 @@ backend/.venv/
 venv/
 frontend/node_modules/
 frontend/.next/
+mcp/node_modules/
 frontend/lib/api-types.ts
 **/__pycache__/
 *.pyc

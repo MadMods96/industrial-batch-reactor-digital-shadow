@@ -1,8 +1,9 @@
-/** Demo / seed plant payload for Vercel-only deploys (no external FastAPI). */
+/** Honest demo / Excel-seed payloads (Fix Brief 003). Never label this as live PLC. */
 
 import plantBatches from "./plant_batches.json";
 
 export const MACHINE_IDS = [1093, 1094, 1146] as const;
+export const DEMO_MODE = true;
 
 const LABELS: Record<number, string> = {
   1093: "R1 Unit 1",
@@ -10,26 +11,16 @@ const LABELS: Record<number, string> = {
   1146: "R3 Unit 3",
 };
 
-const STATES = ["heating", "holding", "cooling"] as const;
+/** Doc 03 vocabulary — never "holding". */
+const STATES = ["heating", "gas", "cooling"] as const;
 
-function dense(tr0: number, state: string) {
-  const n = 120;
-  const trC: number[] = [];
-  const tsC: number[] = [];
-  const prBar: number[] = [];
-  const psBar: number[] = [];
-  const processState: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    let tr = tr0;
-    if (state === "heating") tr = tr0 + t * 40;
-    else if (state === "cooling") tr = tr0 - t * 25;
-    trC.push(Math.round(tr * 10) / 10);
-    tsC.push(Math.round((tr * 0.55 + 40) * 10) / 10);
-    prBar.push(Math.round((0.4 + t * 0.8) * 100) / 100);
-    psBar.push(Math.round((0.2 + t * 0.3) * 100) / 100);
-    processState.push(state);
-  }
+function denseHold(tr: number, ts: number, pr: number, ps: number, state: string) {
+  const n = 300;
+  const trC = Array.from({ length: n }, () => tr);
+  const tsC = Array.from({ length: n }, () => ts);
+  const prBar = Array.from({ length: n }, () => pr);
+  const psBar = Array.from({ length: n }, () => ps);
+  const processState = Array.from({ length: n }, () => state);
   return { step_s: 1, horizon_s: n, tr_c: trC, ts_c: tsC, pr_bar: prBar, ps_bar: psBar, process_state: processState };
 }
 
@@ -38,43 +29,46 @@ export function liveSnapshot() {
   const machines = MACHINE_IDS.map((id, slot) => {
     const state = STATES[slot];
     const tr = [318, 412, 265][slot];
+    const ts = Math.round(tr * 0.55 + 40);
+    const pr = [0.9, 1.4, 0.5][slot];
+    const ps = [0.3, 0.5, 0.2][slot];
     return {
       machine_id: id,
       display_name: LABELS[id],
       scene_slot: slot,
-      online: true,
+      online: false,
       last_sample_at: now,
-      staleness_s: 90 + slot * 20,
-      batch_no: 40 + slot,
-      batch_elapsed_min: [180, 260, 95][slot],
+      staleness_s: 86_400,
+      batch_no: null,
+      batch_elapsed_min: null,
       process_state: state,
       process_raw: state,
       fault_state: "none",
-      phase_elapsed_min: [40, 70, 25][slot],
+      phase_elapsed_min: null,
       measured: {
         tr_c: tr,
-        ts_c: Math.round(tr * 0.55 + 40),
-        pr_bar: [0.9, 1.4, 0.5][slot],
-        ps_bar: [0.3, 0.5, 0.2][slot],
+        ts_c: ts,
+        pr_bar: pr,
+        ps_bar: ps,
         amb_temp_c: 29,
-        roh_c_per_min: state === "heating" ? 1.2 : state === "cooling" ? -0.8 : 0.1,
+        roh_c_per_min: null,
       },
       interpolation_mode: "linear_fallback",
-      dense: dense(tr, state),
-      residual: { r_t_c: 0, r_t_norm: 0, r_p_bar: 0, ewma_z: 0, cusum: 0, alarm: false, severity: "ok" },
+      dense: denseHold(tr, ts, pr, ps, state),
+      residual: null,
       projection: {
         predicted_end_at: null,
-        predicted_total_duration_min: [420, 480, 400][slot],
-        predicted_yields: {
-          oil_yield_pct: { p10: 38, p50: 42, p90: 46 },
-        },
+        predicted_total_duration_min: null,
+        predicted_yields: null,
       },
     };
   });
   return {
     type: "snapshot",
     server_time: now,
-    model_version: "excel-seed-v1",
+    model_version: null,
+    demo: true,
+    label: "DEMO DATA — Excel seed / synthetic floor (not live panel)",
     machines,
   };
 }
@@ -83,62 +77,78 @@ export function demoBatches() {
   return {
     batches: (plantBatches as { batches: unknown[] }).batches,
     source: (plantBatches as { source?: string }).source,
+    note: (plantBatches as { note?: string }).note,
     n_batches: (plantBatches as { n_batches?: number }).n_batches,
   };
 }
 
 export function demoReplay(key: string) {
-  const machineId = Number(key.split("-")[0]) || 1093;
-  const snap = liveSnapshot().machines.find((m) => m.machine_id === machineId) || liveSnapshot().machines[0];
+  const batches = (plantBatches as { batches: Array<Record<string, unknown>> }).batches;
+  const batch = batches.find((b) => b.batch_key === key);
+  if (!batch) {
+    return {
+      batch_key: key,
+      mode: "missing",
+      message: "Unknown batch key.",
+      excel: null,
+      t_offset_s: [],
+      measured: { tr_c: [] },
+      simulated: { tr_c: [] },
+      process_state_measured: [],
+      in_training_split: false,
+      errors: { tr_rmse_c: null },
+    };
+  }
   return {
     batch_key: key,
-    machine_id: machineId,
-    samples: snap.dense.tr_c.map((tr, i) => ({
-      sampled_at: new Date(Date.now() - (120 - i) * 60_000).toISOString(),
-      tr_c: tr,
-      ts_c: snap.dense.ts_c[i],
-      pr_bar: snap.dense.pr_bar[i],
-      ps_bar: snap.dense.ps_bar[i],
-      process_state: snap.dense.process_state[i],
-    })),
+    mode: "excel_only",
+    message: "No panel telemetry for this batch. Showing Excel mass-log fields only.",
+    excel: batch,
+    t_offset_s: [],
+    measured: { tr_c: [] },
+    simulated: { tr_c: [] },
+    process_state_measured: [],
+    in_training_split: Boolean(batch.in_training_split),
+    errors: { tr_rmse_c: null },
   };
 }
 
 export function demoTelemetry(machineId: number) {
-  const snap = liveSnapshot().machines.find((m) => m.machine_id === machineId) || liveSnapshot().machines[0];
   return {
     machine_id: machineId,
-    samples: snap.dense.tr_c.map((tr, i) => ({
-      sampled_at: new Date(Date.now() - (120 - i) * 240_000).toISOString(),
-      tr_c: tr,
-      ts_c: snap.dense.ts_c[i],
-      pr_bar: snap.dense.pr_bar[i],
-      ps_bar: snap.dense.ps_bar[i],
-      process_raw: snap.dense.process_state[i],
-      process_state: snap.dense.process_state[i],
-      fault_state: "none",
-    })),
+    samples: [],
+    message: "No panel telemetry in Vercel demo mode.",
+  };
+}
+
+export function trainingRanges() {
+  const rows = (plantBatches as { batches: Array<{ feed_mass_kg: number | null }> }).batches;
+  const feeds = rows.map((b) => b.feed_mass_kg).filter((v): v is number => typeof v === "number");
+  const min = feeds.length ? Math.min(...feeds) : 9500;
+  const max = feeds.length ? Math.max(...feeds) : 13650;
+  return {
+    feed_mass_kg: [min, max],
+    target_peak_tr_c: [420, 480] as [number, number],
   };
 }
 
 export function demoSimulate(body: {
   feed_mass_kg: number;
-  moisture_pct: number;
+  feedstock_type?: string;
   target_peak_tr_c: number;
   machine_id?: number;
+  moisture_pct?: number;
 }) {
   const feed = body.feed_mass_kg;
-  const moisture = body.moisture_pct;
   const peak = body.target_peak_tr_c;
   const mid = body.machine_id ?? 1093;
+  const ranges = trainingRanges();
   type Row = {
     machine_id: number;
     oil_yield_pct: number | null;
-    carbon_yield_pct: number | null;
     steel_yield_pct: number | null;
     total_duration_min: number | null;
     feed_mass_kg: number | null;
-    moisture_pct: number | null;
   };
   const history = (plantBatches as { batches: Row[] }).batches.filter((b) => b.machine_id === mid);
   const avg = (key: keyof Row, fallback: number) => {
@@ -146,140 +156,115 @@ export function demoSimulate(body: {
     if (!vals.length) return fallback;
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   };
-  const baseOil = avg("oil_yield_pct", 40);
-  const baseCarbon = avg("carbon_yield_pct", 33);
+  const baseOil = avg("oil_yield_pct", 35);
   const baseSteel = avg("steel_yield_pct", 12);
   const baseTime = avg("total_duration_min", 2000);
   const baseFeed = avg("feed_mass_kg", 10500);
-  const moistKg = avg("moisture_pct", 600);
-  const moistPct = baseFeed > 0 ? (moistKg / baseFeed) * 100 : 6;
-  const oil = Math.max(28, Math.min(52, baseOil - (moisture - moistPct) * 0.8 + ((feed - baseFeed) / baseFeed) * 2));
-  const carbon = Math.max(20, Math.min(40, baseCarbon - (peak - 450) * 0.02));
-  const steel = Math.max(8, Math.min(18, baseSteel + (moisture - moistPct) * 0.1));
-  const duration = Math.round(baseTime + (feed - baseFeed) * 0.05 + (moisture - moistPct) * 15 + (peak - 450) * 0.8);
-  const warnings: string[] = [];
-  if (feed < 4500 || feed > 14000) warnings.push("Feed mass is outside the usual plant-log range.");
-  if (moisture < 1 || moisture > 12) warnings.push("Moisture is outside the usual plant-log range.");
-  if (peak < 400 || peak > 500) warnings.push("Peak Tr is outside the usual demo range.");
-  if (feed < 9500 || feed > 12900 || moisture > 11 || moisture < 3) {
-    warnings.push("Outside typical history — treat as a rough guide.");
+
+  const blocking: string[] = [];
+  if (feed < ranges.feed_mass_kg[0] || feed > ranges.feed_mass_kg[1]) {
+    blocking.push(
+      `Feed ${feed} kg is outside the logged training range ${ranges.feed_mass_kg[0]}–${ranges.feed_mass_kg[1]} kg.`,
+    );
   }
+  if (peak < ranges.target_peak_tr_c[0] || peak > ranges.target_peak_tr_c[1]) {
+    blocking.push(
+      `Peak Tr ${peak} °C is outside the provisional range ${ranges.target_peak_tr_c[0]}–${ranges.target_peak_tr_c[1]} °C.`,
+    );
+  }
+
+  if (blocking.length) {
+    return {
+      input_echo: body,
+      model_version: null,
+      blocked: true,
+      extrapolation_warnings: blocking,
+      predicted_total_duration_min: null,
+      phases: [],
+      predicted_yields: null,
+    };
+  }
+
+  const oil = Math.max(28, Math.min(48, baseOil + ((feed - baseFeed) / baseFeed) * 2));
+  const steel = Math.max(8, Math.min(18, baseSteel));
+  const duration = Math.round(baseTime + (feed - baseFeed) * 0.05);
   const label = mid === 1093 ? "R1" : mid === 1094 ? "R2" : "R3";
   return {
     input_echo: body,
     model_version: "excel-seed-v1",
+    blocked: false,
     predicted_total_duration_min: duration,
     extrapolation_warnings: [
-      `${label} estimate anchored on ${history.length} plant log batches (Excel seed).`,
-      ...warnings,
+      `${label} duration/oil anchored on ${history.length} Excel log batches. Carbon is not predicted (plant estimate only).`,
     ],
-    phases: [
-      { process_state: "heating", duration_min: Math.round(duration * 0.35) },
-      { process_state: "holding", duration_min: Math.round(duration * 0.4) },
-      { process_state: "cooling", duration_min: Math.round(duration * 0.25) },
-    ],
+    phases: [],
     predicted_yields: {
-      oil_yield_pct: { p10: oil - 3, p50: oil, p90: oil + 3 },
-      carbon_yield_pct: { p10: carbon - 2, p50: carbon, p90: carbon + 2 },
+      oil_yield_pct: { p10: oil - 2, p50: oil, p90: oil + 2 },
       steel_yield_pct: { p10: steel - 1, p50: steel, p90: steel + 1 },
     },
   };
 }
 
-export function demoBriefing() {
-  const n = (plantBatches as { n_batches?: number }).n_batches ?? 0;
-  return {
-    generated_at: new Date().toISOString(),
-    plant: "Plant Floor",
-    reactors: [
-      { id: "R1", state: "heating", tr_c: 318, note: "Mid-ramp, batch ~3h in" },
-      { id: "R2", state: "holding", tr_c: 412, note: "Near peak hold" },
-      { id: "R3", state: "cooling", tr_c: 265, note: "Cooldown-down after hold" },
-    ],
-    coverage_note: `Floor live view is demo telemetry; Batches/What-if use ${n} anonymized Excel plant-log rows.`,
-  };
-}
-
 export function demoInsights() {
-  const key = process.env.HTPP_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || "";
-  const wid = process.env.HTPP_ANTHROPIC_WORKSPACE_ID || process.env.ANTHROPIC_WORKSPACE_ID || "";
   const n = (plantBatches as { n_batches?: number }).n_batches ?? 0;
   return {
     insights: [
       {
-        severity: "info",
-        title: `${n} plant-log batches loaded`,
-        detail: "Batches come from the anonymized Excel mass log (feed, moisture, oil/carbon/steel, time).",
+        severity: "warning",
+        title: "DEMO DATA",
+        detail: "Floor telemetry is synthetic. Batches come from the anonymized Excel mass log — not live PLC.",
       },
       {
-        severity: "warning",
-        title: "Floor is still demo live view",
-        detail: "3D floor uses seeded telemetry. Growing history needs DuckDB/DB — Vercel does not append new Excel rows automatically.",
+        severity: "info",
+        title: `${n} Excel batches loaded`,
+        detail: "Oil/steel/time from plant log. Carbon is a plant estimate (not a measurement). Water recovered is an output, not feed moisture.",
       },
     ],
-    claude_configured: Boolean(key.trim()) && Boolean(wid.trim()),
-    claude_needs_workspace: Boolean(key.trim()) && !Boolean(wid.trim()),
+    claude_configured: false,
+    claude_needs_workspace: false,
+    mcp_hint: "Use the HTPP Digital Shadow MCP server with Claude Desktop for plant Q&A — see docs/MCP-CLAUDE.md",
     generated_at: new Date().toISOString(),
   };
 }
 
 export function demoCoverage() {
-  const days = 28;
-  const start = new Date();
-  start.setUTCDate(start.getUTCDate() - (days - 1));
-  const all = (plantBatches as { batches: Array<{ machine_id: number; log_date: string }> }).batches;
-  const per_machine = MACHINE_IDS.map((id, slot) => {
+  const all = (plantBatches as { batches: Array<Record<string, unknown>> }).batches;
+  const per_machine = MACHINE_IDS.map((id) => {
     const mine = all.filter((b) => b.machine_id === id);
-    const daily = Array.from({ length: days }, (_, i) => {
-      const d = new Date(start);
-      d.setUTCDate(start.getUTCDate() + i);
-      const date = d.toISOString().slice(0, 10);
-      const hits = mine.filter((b) => b.log_date === date).length;
-      return {
-        date,
-        n_samples: hits > 0 ? hits * 300 : 0,
-        median_interval_s: 240,
-        max_gap_s: hits > 0 ? 480 : 3600,
-      };
-    });
-    const gaps = daily
-      .filter((row) => row.n_samples === 0)
-      .map((row) => ({
-        from: `${row.date}T00:00:00Z`,
-        to: `${row.date}T01:00:00Z`,
-        duration_s: 3600,
-      }));
+    const missing = mine.filter((b) => (b.quality_flags as string[] | undefined)?.includes("excel_durations_missing"));
     return {
       machine_id: id,
-      history_floor: mine[0]?.log_date ?? daily[0]?.date ?? null,
-      last_sample_at: new Date().toISOString(),
-      n_samples: mine.length,
-      median_interval_s: 240,
-      daily,
-      gaps,
+      history_floor: mine[0]?.log_date ?? null,
+      last_sample_at: null,
+      n_samples: 0,
+      n_excel_batches: mine.length,
+      median_interval_s: null,
+      daily: [],
+      gaps: [],
+      note: `${mine.length} Excel batch rows (not telemetry samples). ${missing.length} missing duration rows.`,
     };
   });
+  const usable = all.filter((b) => b.usable_for_training).length;
+  const missingDur = all.filter((b) => (b.quality_flags as string[])?.includes("excel_durations_missing")).length;
   return {
     per_machine,
     batches: {
       total: all.length,
-      complete: all.length,
-      usable_for_training: all.length,
+      complete: all.length - missingDur,
+      usable_for_training: usable,
       with_excel_log: all.length,
-      with_fault: 0,
+      with_fault: null,
+      missing_durations: missingDur,
     },
-    excel: { rows_parsed: all.length, rows_unmatched: 0, unmatched_detail: [], closure_error_pct: {} },
+    excel: {
+      rows_parsed: all.length,
+      rows_unmatched: 0,
+      unmatched_detail: [],
+      closure_status: "not_measurable",
+      closure_error_pct: {},
+    },
     unmapped_process_values: [],
     ingest_failures: [],
+    note: "Data page reflects Excel batch counts only until panel telemetry is ingested.",
   };
 }
-
-export const ASSISTANT_SYSTEM = `You are the HTPP Digital Shadow assistant for industrial batch reactors (Plant Floor: R1 Unit 1, R2 Unit 2, R3 Unit 3).
-
-Rules:
-- You only advise. You cannot actuate valves, change setpoints, or write to the panel.
-- Use ONLY the plant briefing JSON and the user's question. If a number is missing, say so.
-- Write for plant operators in plain English. Markdown bullets OK.
-- Never invent or reveal customer, site, operator, email, password, or API credentials.
-- Keep answers short: 2–6 sentences or a tight bullet list.
-- Batch history may come from an anonymized Excel plant log on Vercel; say so if asked whether Floor is live PLC.`;

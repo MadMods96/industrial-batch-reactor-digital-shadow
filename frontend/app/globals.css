@@ -886,3 +886,35 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
 }
 .coverage-heat .heat-on { background: color-mix(in srgb, var(--brand) 78%, #0b3d2e); }
 .coverage-heat .heat-off { background: color-mix(in srgb, var(--line) 80%, white); }
+
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--warning) 18%, white);
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 40%, white);
+  color: var(--text);
+  font-size: 13px;
+}
+.demo-banner strong {
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.batch-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 12px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.batch-filters select {
+  margin-left: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+}
