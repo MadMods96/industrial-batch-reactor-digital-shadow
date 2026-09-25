@@ -1,4 +1,6 @@
-/** Demo plant payload for Vercel-only deploys (no external FastAPI). */
+/** Demo / seed plant payload for Vercel-only deploys (no external FastAPI). */
+
+import plantBatches from "./plant_batches.json";
 
 export const MACHINE_IDS = [1093, 1094, 1146] as const;
 
@@ -79,19 +81,9 @@ export function liveSnapshot() {
 
 export function demoBatches() {
   return {
-    batches: MACHINE_IDS.flatMap((id, i) =>
-      [1, 2, 3].map((n) => ({
-        batch_key: `${id}-2026092${n}-B${30 + n}`,
-        machine_id: id,
-        batch_no: 30 + n + i,
-        total_duration_min: 380 + i * 20 + n * 5,
-        peak_tr_c: 440 + i * 8 + n,
-        had_fault: false,
-        usable_for_training: true,
-        oil_yield_pct: 40 + i + n * 0.5,
-        quality_flags: [],
-      })),
-    ),
+    batches: (plantBatches as { batches: unknown[] }).batches,
+    source: (plantBatches as { source?: string }).source,
+    n_batches: (plantBatches as { n_batches?: number }).n_batches,
   };
 }
 

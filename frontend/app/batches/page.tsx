@@ -29,6 +29,10 @@ export default function BatchesPage() {
     <main className="page">
       <div className="kicker">Batch explorer</div>
       <h1 style={{ fontWeight: 500 }}>Every batch the shadow has seen</h1>
+      <p style={{ color: "var(--muted)", maxWidth: "62ch" }}>
+        Seeded from the anonymized plant Excel mass log (feed / moisture / oil / carbon / steel / time).
+        New live rows need a persistent store (DuckDB / DB) — Vercel demo does not append yet.
+      </p>
       {error && <div className="banner">{error}. Run the API, then seed or backfill.</div>}
       {!rows.length && !error && <div className="panel" style={{ padding: 16 }}>No batches yet. Run <span className="mono">python -m htpp.cli seed</span> or backfill.</div>}
       <div className="panel table-wrap">
