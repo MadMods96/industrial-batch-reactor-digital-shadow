@@ -1,0 +1,40 @@
+# Render Blueprint — https://dashboard.render.com/blueprints
+# Connect this GitHub repo, then set secrets in the dashboard (panel / Anthropic).
+
+services:
+  - type: web
+    name: htpp-digital-shadow-api
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install -e ./backend
+    startCommand: python scripts/render_start.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: HOST
+        value: "0.0.0.0"
+      # Demo-safe default: no live panel pulls until you set credentials.
+      - key: HTPP_DISABLE_SCHEDULER
+        value: "1"
+      - key: HTPP_DB_PATH
+        value: data/htpp.duckdb
+      - key: HTPP_ARTIFACT_DIR
+        value: backend/artifacts
+      - key: HTPP_PLANT_LABEL
+        value: Plant Floor
+      # After Vercel deploy, replace with your real frontend URL (comma-separated OK).
+      - key: HTPP_API_CORS_ORIGINS
+        sync: false
+      - key: HTPP_PANEL_BASE_URL
+        sync: false
+      - key: HTPP_PANEL_USERNAME
+        sync: false
+      - key: HTPP_PANEL_PASSWORD
+        sync: false
+      - key: HTPP_ANTHROPIC_API_KEY
+        sync: false
+      - key: HTPP_ANTHROPIC_WORKSPACE_ID
+        sync: false

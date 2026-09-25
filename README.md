@@ -105,6 +105,8 @@ Customer or site names must **not** be hardcoded in source. Put them only in `.e
 
 **Do not** put the API-only on Vercel serverless if you need live WebSockets and periodic panel pulls.
 
+Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)** (`render.yaml` + Vercel root = `frontend`).
+
 Minimal production env:
 
 ```text

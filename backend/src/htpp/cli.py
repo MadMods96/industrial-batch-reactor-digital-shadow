@@ -115,8 +115,13 @@ def _reproduce(_args) -> None:
 
 
 def _api(_args) -> None:
+    import os
+
     import uvicorn
-    uvicorn.run("htpp.api.main:app", host="127.0.0.1", port=8000, reload=False)
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("htpp.api.main:app", host=host, port=port, reload=False)
 
 
 commands = {
