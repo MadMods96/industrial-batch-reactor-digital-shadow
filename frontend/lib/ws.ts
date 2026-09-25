@@ -1,16 +1,26 @@
 "use client";
 
+import { apiBase, wsUrl } from "./apiBase";
 import { useLive } from "./store";
 
-const WS = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8000/ws/live";
 let started = false;
 
 export function connectLive() {
   if (started || typeof window === "undefined") return;
   started = true;
+
+  const socketUrl = wsUrl();
+  if (!socketUrl) {
+    void pollSnapshot();
+    window.setInterval(() => {
+      void pollSnapshot();
+    }, 4000);
+    return;
+  }
+
   let delay = 1000;
   const open = () => {
-    const socket = new WebSocket(WS);
+    const socket = new WebSocket(socketUrl);
     socket.onopen = () => {
       delay = 1000;
       useLive.getState().setStatus("live");
@@ -30,20 +40,13 @@ export function connectLive() {
   open();
 }
 
-export const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API}${path}`);
-  if (!response.ok) throw new Error(`${response.status} ${path}`);
-  return response.json() as Promise<T>;
-}
-
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) throw new Error(`${response.status} ${path}`);
-  return response.json() as Promise<T>;
+async function pollSnapshot() {
+  try {
+    const response = await fetch(`${apiBase()}/api/live/snapshot`, { cache: "no-store" });
+    if (!response.ok) throw new Error(String(response.status));
+    const payload = await response.json();
+    useLive.getState().applyMessage(payload);
+  } catch {
+    useLive.getState().setStatus("down");
+  }
 }

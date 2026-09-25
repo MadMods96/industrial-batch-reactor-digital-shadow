@@ -98,24 +98,9 @@ Customer or site names must **not** be hardcoded in source. Put them only in `.e
 
 ## Deploy (recommended)
 
-| Piece | Where | Why |
-|-------|--------|-----|
-| **Frontend** (Next.js) | **Vercel** | Static/SSR hosting, easy HTTPS, env for `NEXT_PUBLIC_*` |
-| **Backend** (FastAPI + DuckDB + WebSocket + ingest) | **Render** (or Fly.io / Railway) | Needs a long-running process; Vercel alone is a poor fit for WS + cron |
+**Vercel-only (demo + Ask):** set Root Directory to `frontend`. Same-origin `/api` serves demo plant data and Claude. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
-**Do not** put the API-only on Vercel serverless if you need live WebSockets and periodic panel pulls.
-
-Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)** (`render.yaml` + Vercel root = `frontend`).
-
-Minimal production env:
-
-```text
-HTPP_API_CORS_ORIGINS=https://your-frontend.vercel.app
-NEXT_PUBLIC_API_BASE_URL=https://your-api.onrender.com
-NEXT_PUBLIC_WS_URL=wss://your-api.onrender.com/ws/live
-```
-
-Protect the API (basic auth, VPN, or IP allowlist) before sharing a public URL — v1 has no end-user login yet.
+Optional later: a Python host (Render / Railway / Fly) for live PLC + DuckDB fitted models. Not required for the public demo UI.
 
 ---
 

@@ -1,46 +1,33 @@
-# Deploy (Vercel frontend + Render API)
+# Deploy on Vercel only (no Render)
 
-Split hosting is required: Next.js on **Vercel**, FastAPI + WebSocket + DuckDB on **Render**.
+This app can run **entirely on Vercel**: Next.js UI + `/api/*` demo routes + Claude.
 
-## 1. Backend on Render
+## 1. Import repo
 
-1. Open [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
-2. Select `MadMods96/industrial-batch-reactor-digital-shadow` and apply `render.yaml`.
-3. When prompted, set at least:
+- [vercel.com/new](https://vercel.com/new) → this GitHub repo
+- **Root Directory:** `frontend`
+- Framework: Next.js
 
-| Key | Value |
-|-----|--------|
-| `HTPP_API_CORS_ORIGINS` | `https://YOUR-APP.vercel.app` (update after step 2) |
-| Panel / Anthropic keys | Optional; leave blank for seeded demo |
+## 2. Environment variables (Vercel)
 
-4. Deploy. Note the API URL, e.g. `https://htpp-digital-shadow-api.onrender.com`.
-5. Confirm `GET /health` returns `{"status":"ok"}`.
+| Name | Required | Notes |
+|------|----------|--------|
+| `HTPP_ANTHROPIC_API_KEY` | for Ask | server-only, never `NEXT_PUBLIC_` |
+| `HTPP_ANTHROPIC_WORKSPACE_ID` | for Ask | `wrkspc_…` |
+| `HTPP_ANTHROPIC_MODEL` | optional | default `claude-sonnet-4-5` |
+| `NEXT_PUBLIC_API_BASE_URL` | optional | leave **empty** or set to `same` |
+| `NEXT_PUBLIC_WS_URL` | optional | leave **empty** or `poll` (HTTP snapshot) |
 
-Free tier sleeps after idle; the first request after sleep can take ~30–60s. For a supervisor demo, open the API URL once before the meeting.
+Do **not** set API/WS to `localhost`. Do **not** point them at the Vercel URL with a missing backend — same-origin `/api` is automatic on `*.vercel.app`.
 
-To enable live panel pulls later: set panel credentials and `HTPP_DISABLE_SCHEDULER=0`.
+## 3. Redeploy
 
-## 2. Frontend on Vercel
+After saving env vars: **Deployments → Redeploy**.
 
-1. [vercel.com/new](https://vercel.com/new) → import the same GitHub repo.
-2. **Root Directory:** `frontend` (important).
-3. Framework: Next.js (auto).
-4. Environment variables:
+## What works on Vercel-only
 
-| Key | Value |
-|-----|--------|
-| `NEXT_PUBLIC_API_BASE_URL` | `https://htpp-digital-shadow-api.onrender.com` |
-| `NEXT_PUBLIC_WS_URL` | `wss://htpp-digital-shadow-api.onrender.com/ws/live` |
+- Floor (demo reactors via `/api/live/snapshot` poll)
+- Insights + Ask (Claude if keys set)
+- Batches / What-if (demo estimates)
 
-5. Deploy. Copy the `*.vercel.app` URL into Render’s `HTPP_API_CORS_ORIGINS`, then **Manual Deploy** the API once so CORS updates.
-
-## 3. Smoke check
-
-- Floor loads 3 reactors
-- Browser Network: `/api/...` → 200 from Render
-- WebSocket `/ws/live` connects (may lag on cold start)
-- What-if runs for R1/R2/R3
-
-## Security note
-
-v1 has no end-user login. Do not put real plant credentials on a fully public demo without IP allowlist / auth in front of the API.
+Live PLC ingest + DuckDB fitted models still need a Python host later if you want production plant data.
