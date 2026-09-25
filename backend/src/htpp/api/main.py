@@ -64,12 +64,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:
-        origin = request.headers.get("origin")
-        headers = {}
-        if origin in settings.cors_origins:
-            headers["Access-Control-Allow-Origin"] = origin
-            headers["Access-Control-Allow-Credentials"] = "true"
-            headers["Vary"] = "Origin"
+        origin = request.headers.get("origin") or "*"
         log.exception("unhandled %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,
@@ -80,14 +75,22 @@ def create_app() -> FastAPI:
                     "detail": f"{type(exc).__name__}: {exc}",
                 }
             },
-            headers=headers,
+            headers={
+                "Access-Control-Allow-Origin": origin if origin != "null" else "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Vary": "Origin",
+            },
         )
 
+    # Demo-friendly CORS: frontend fetch() does not send cookies.
+    # Still honor HTPP_API_CORS_ORIGINS when set; otherwise allow all.
+    origins = settings.cors_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_origin_regex=r"https://.*\.vercel\.app",
-        allow_credentials=True,
+        allow_origins=origins if origins else ["*"],
+        allow_origin_regex=r"https://.*\.(vercel\.app|onrender\.com)",
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

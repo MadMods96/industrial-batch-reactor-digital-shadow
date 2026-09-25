@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
     anthropic_workspace_id: str = ""
-    api_cors_origins: str = "http://localhost:3000"
+    api_cors_origins: str = "*"
     plant_label: str = "Plant Floor"
     # "1093:R1 Unit 1,1094:R2 Unit 2,1146:R3 Unit 3"
     machine_labels: str = "1093:R1 Unit 1,1094:R2 Unit 2,1146:R3 Unit 3"
