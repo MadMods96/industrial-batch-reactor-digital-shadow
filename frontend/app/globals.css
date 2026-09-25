@@ -43,23 +43,35 @@ a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; color: inherit; }
 .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0; }
 
-.app-nav {
-  position: fixed;
-  z-index: 20;
-  top: 0; left: 0; right: 0;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  padding: 14px 22px;
+.app-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   background: var(--nav-bg);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
 }
+.app-nav {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 18px;
+  background: transparent;
+  border-bottom: 0;
+  backdrop-filter: none;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.app-nav::-webkit-scrollbar { display: none; }
 .app-nav .brand {
   display: flex;
   flex-direction: column;
   gap: 1px;
   margin-right: 8px;
+  flex-shrink: 0;
 }
 .app-nav .brand strong {
   font-size: 15px;
@@ -79,6 +91,8 @@ button, input, select { font: inherit; color: inherit; }
   font-weight: 500;
   padding: 6px 0;
   border-bottom: 2px solid transparent;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .app-nav a.active,
 .app-nav a:hover {
@@ -88,7 +102,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .page {
   min-height: 100vh;
-  padding: 88px 22px 36px;
+  padding: 24px 22px 36px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -170,8 +184,13 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
   color: var(--brand);
   margin-top: 2px;
 }
+.floor-canvas {
+  position: absolute;
+  inset: 0;
+}
 .floor-page {
-  height: 100vh;
+  height: calc(100dvh - 0px);
+  min-height: 520px;
   position: relative;
   overflow: hidden;
   background: #e4ecf2;
@@ -179,13 +198,13 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
 .floor-rail {
   position: absolute;
   z-index: 5;
-  top: 72px;
+  top: 16px;
   left: 16px;
   width: 268px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 210px);
+  max-height: calc(100% - 120px);
   overflow: auto;
   pointer-events: none;
 }
@@ -235,7 +254,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
 .floor-view-tools {
   position: absolute;
   z-index: 5;
-  top: 72px;
+  top: 16px;
   right: 16px;
   display: flex;
   flex-wrap: wrap;
@@ -346,10 +365,10 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
 .insights-half {
   position: absolute;
   z-index: 6;
-  top: 118px;
+  top: 62px;
   right: 16px;
   width: min(340px, calc(100% - 32px));
-  max-height: min(420px, calc(100vh - 200px));
+  max-height: min(420px, calc(100% - 160px));
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -527,26 +546,6 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
   border-radius: 4px;
 }
 .assistant-bubble.assistant .md-body { color: inherit; }
-
-
-@media (max-width: 900px) {
-  .grid-cards { grid-template-columns: 1fr; }
-  .floor-rail {
-    width: min(240px, calc(100% - 28px));
-    max-height: 48vh;
-  }
-  .floor-view-tools {
-    max-width: min(280px, calc(100% - 28px));
-    top: 72px;
-  }
-  .insights-half {
-    top: auto;
-    bottom: 88px;
-    right: 14px;
-    width: min(300px, calc(100% - 28px));
-    max-height: 40vh;
-  }
-}
 
 .assistant-dock {
   position: fixed;
@@ -917,4 +916,143 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 55%, transp
   border-radius: 8px;
   padding: 4px 8px;
   background: var(--bg-raised);
+}
+
+/* —— Responsive (phone / tablet) —— */
+@media (max-width: 900px) {
+  .grid-cards { grid-template-columns: 1fr; }
+  .page {
+    padding: 16px 14px 96px;
+  }
+  .page h1 {
+    max-width: none;
+    font-size: 1.45rem;
+  }
+  .demo-banner {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  .app-nav {
+    gap: 14px;
+    padding: 10px 12px;
+  }
+
+  .floor-page {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100dvh - 1px);
+    overflow: visible;
+  }
+  .floor-canvas {
+    position: relative;
+    inset: auto;
+    order: 0;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 42vh;
+    min-height: 240px;
+  }
+  .floor-canvas > div,
+  .floor-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .floor-rail {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    max-height: none;
+    padding: 12px 12px 8px;
+    order: 2;
+    pointer-events: auto;
+  }
+  .floor-view-tools {
+    position: relative;
+    top: auto;
+    right: auto;
+    max-width: none;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 8px 12px;
+    order: 1;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .floor-view-tools .chip {
+    flex-shrink: 0;
+  }
+  .insights-half {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: calc(100% - 24px);
+    max-height: none;
+    margin: 0 12px 88px;
+    order: 3;
+  }
+  .floor-alarms {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: calc(100% - 24px);
+    margin: 0 12px 12px;
+    order: 4;
+  }
+  .machine-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    margin: 0 -14px;
+    padding: 0 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 640px;
+  }
+
+  .sim-layout { grid-template-columns: 1fr; }
+  .sim-compare-row { grid-template-columns: 1fr; }
+  .sim-page { padding-bottom: 96px; }
+
+  .assistant-dock {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .assistant-panel {
+    width: min(100vw - 20px, 420px);
+    height: min(70dvh, 560px);
+  }
+  .assistant-panel-chat.is-fullscreen,
+  .assistant-dock.is-fullscreen .assistant-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .insights-modal {
+    width: min(100vw - 20px, 640px);
+    max-height: 85dvh;
+  }
+  .coverage-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .stack-legend {
+    grid-template-columns: 1fr;
+  }
+  .machine-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .floor-canvas {
+    height: 36vh;
+    min-height: 200px;
+  }
 }

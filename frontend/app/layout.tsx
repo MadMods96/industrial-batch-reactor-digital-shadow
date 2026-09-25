@@ -9,6 +9,12 @@ export const metadata = {
   description: "Digital shadow of industrial batch reactors (demo / Excel seed)",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -21,8 +27,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
-        <DemoBanner />
-        <Nav />
+        <header className="app-chrome">
+          <DemoBanner />
+          <Nav />
+        </header>
         {children}
         <AssistantDock />
       </body>

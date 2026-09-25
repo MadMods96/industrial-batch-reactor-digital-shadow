@@ -41,7 +41,9 @@ export default function OverviewPage() {
 
   return (
     <main className="floor-page">
-      {webgl ? <PlantScene /> : <div className="page">WebGL is unavailable. Other pages still work.</div>}
+      <div className="floor-canvas">
+        {webgl ? <PlantScene /> : <div className="page">WebGL is unavailable. Other pages still work.</div>}
+      </div>
 
       <aside className="floor-rail" aria-label="Plant status">
         <div className="floor-brand-block">
