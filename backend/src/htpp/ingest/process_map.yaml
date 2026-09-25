@@ -1,0 +1,46 @@
+mappings:
+  - raw: "Machine Idle"
+    process_state: idle
+    fault_state: none
+  - raw: "HEATING"
+    process_state: heating
+    fault_state: none
+  - raw: "Process On"
+    process_state: heating
+    fault_state: none
+  - raw: "GAS"
+    process_state: gas
+    fault_state: none
+  - raw: "Solenoid On"
+    process_state: solenoid_on
+    fault_state: none
+  - raw: "COOLING"
+    process_state: cooling
+    fault_state: none
+  - raw: "Cooling On"
+    process_state: cooling
+    fault_state: none
+  - raw: "N2 PURGING"
+    process_state: n2_purging
+    fault_state: none
+  - raw: "CARBON DISCHARGE"
+    process_state: carbon_discharge
+    fault_state: none
+  - raw: "Carbon Discharge"
+    process_state: carbon_discharge
+    fault_state: none
+  - raw: "MAIN DOOR OPEN"
+    process_state: main_door_open
+    fault_state: none
+  - raw: "Choke Emergency"
+    process_state: carry_previous
+    fault_state: choke_emergency
+  - raw: "Gas Passage Choke"
+    process_state: carry_previous
+    fault_state: gas_passage_choke
+  - raw: "Pressure Sensor Error"
+    process_state: carry_previous
+    fault_state: pressure_sensor_error
+  - raw: "Emergency"
+    process_state: carry_previous
+    fault_state: unknown_fault

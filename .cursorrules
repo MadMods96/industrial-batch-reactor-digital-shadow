@@ -1,0 +1,210 @@
+# Cursor rules: HTPP Reactor Digital Shadow
+
+You are implementing a research project from written specifications. The specs in
+`docs/` are the source of truth. Read them before writing code.
+
+---
+
+## 1. Read before you write
+
+| Working on | Read first |
+|---|---|
+| Anything at all | `docs/01-PRD.md`, `docs/02-architecture.md` |
+| Any field name, type or unit | `docs/03-data-contracts.md`. **Always.** |
+| Scraper or parser | `docs/04-scraper-spec.md` |
+| Any model or fit | `docs/05-modeling-spec.md` |
+| Any endpoint | `docs/06-api-spec.md` |
+| Any frontend code | `docs/07-frontend-spec.md` |
+| Anything in `components/scene/` | `docs/08-3d-scene-spec.md` and `docs/09-blender-rig-spec.md` |
+| Deciding what to do next | `docs/10-task-breakdown.md` |
+| Any metric or figure | `docs/11-validation-and-paper.md` |
+
+**If code and a spec disagree, the spec is right and the code is a bug.** If a spec
+is genuinely wrong or ambiguous, say so and ask. Do not silently deviate, and do not
+edit a spec to match code you already wrote.
+
+---
+
+## 2. Work order
+
+Follow `docs/10-task-breakdown.md` by task ID. Respect the day gates:
+
+- **Day 1 gate:** `make backfill` must succeed. Panel history is being trimmed, so
+  every day of delay permanently loses training data. This is the highest priority
+  task in the entire project.
+- **Day 2 gate:** the segmenter reproduces machine 1093 batch 833 exactly, six phases
+  with the durations in doc 03 section 3.
+- **Day 3 gate:** `/ws/live` emits dense trajectories.
+- **Day 4 gate:** 3D interpolation is visibly smooth across at least three real ticks.
+
+Do not mark a task complete because the code exists. Produce the evidence the
+acceptance criteria name. If you cannot, the task stays open and you say why.
+
+---
+
+## 3. Non-negotiable technical rules
+
+### Data integrity
+
+- **`NULL` is not zero.** A missing pressure reading is not zero pressure. Never
+  coerce a missing measurement to 0, in parsing, in modelling, or in the UI.
+- **Never assume a uniform sample interval.** Cadence varies (observed 4.0 to 6.1
+  minutes, with gaps). Every derivative and integral uses actual elapsed time from
+  timestamps.
+- **Parse by column header name, never by index.** A missing required header is a
+  loud failure, never a silent shift. A mis-indexed parse poisons the database in a
+  way that is very hard to detect later.
+- **Store panel values unconverted.** Derived values go in separate tables so raw
+  data stays auditable.
+- **Never forward-fill measured telemetry to make it look denser than it is**, in the
+  API, in a chart, or in a figure.
+
+### Modelling integrity
+
+- **Fit on the training split only.** This includes the kinetics `k0` and `Ea`, the
+  severity-index `T_ref` sweep, and every hyperparameter.
+- **Faulted batches stay in the dataset.** `had_fault` does not exclude a batch. Those
+  batches are the entire point of RQ3. Excluding them would be the most damaging
+  single mistake available here.
+- **Always report against baselines B0, B1, B2.** A metric with no baseline is not a
+  result.
+- **`n` appears beside every metric.** There are only about 100 batches.
+- **The steel-yield negative control must pass.** Thermal features should have near-zero
+  importance for steel yield, because steel content is a feedstock property. If they
+  do not, you have a leakage bug, and finding it takes priority over any other result.
+- **Never use a neural network.** About 100 samples. Ridge, ElasticNet, gradient
+  boosting only.
+- **Report negative results.** A failed RQ is a real finding. Do not tune until
+  something looks good.
+
+### Frontend performance
+
+- **Never write React state in `useFrame`.** Guaranteed frame drops.
+- **Never subscribe reactively to per-frame values.** Use `store.getState()` inside
+  `useFrame`. `useStore(selector)` for a value changing every frame re-renders the
+  tree 60 times a second.
+- **Never allocate objects in `useFrame`.** Reuse `THREE.Color` and `THREE.Vector3`
+  held in refs. This is the most common R3F performance bug.
+- HUD text updates at 10 Hz, not 60 Hz.
+
+### 3D asset handling
+
+- **Code against node names from `docs/09-blender-rig-spec.md`, never against a file.**
+  Both `ReactorPlaceholder` and `ReactorGltf` implement the same named interface.
+- **Build the placeholder first**, before the glTF exists. If scene code waits on the
+  Blender model, the timeline collapses.
+- A missing or broken glb falls back to the placeholder with a notice. **The app must
+  never be blank because a 3D asset failed to load.**
+
+### UI honesty
+
+- Every number on screen goes through `ValueWithUnit`. No bare numbers in a
+  process-engineering UI.
+- Every prediction shows an interval via `PredictionInterval`. Never a bare p50.
+- Predictions for training-split batches are labelled as such.
+- `extrapolation_warnings` render as a blocking banner, not a subtle hint.
+- Stale telemetry (`staleness_s > 600`) visibly degrades that reactor. Never keep
+  animating a confident projection over dead telemetry.
+- `interpolation_mode: linear_fallback` is shown in the HUD. The scene must never
+  imply model backing it does not have.
+- Red means fault. Never use red for a temperature series or a chart line.
+
+---
+
+## 4. Panel access, read this before touching the network
+
+`panel.htpp.in` is **Plant Operator's production operations system.** Not ours.
+
+- **Read-only, enforced by a hardcoded path allowlist.** `config.php`,
+  `configstatus.php`, `changeBatch.php`, `changeBatchTiming.php`, `addMobile.php`,
+  `logout.php` and the hooter trigger are forbidden. Requesting any of them could
+  change plant behaviour or set off an audible alarm in an industrial facility.
+- **One request per 2 seconds, globally**, through a single shared limiter.
+- Descriptive `User-Agent` naming the project and contact email.
+- Retries: 3 per chunk, exponential backoff, then move on. Never loop on login.
+
+If you are ever unsure whether an endpoint mutates state, **do not call it.** Ask.
+
+---
+
+## 5. Secrets
+
+- Credentials come from `.env` only, read through `config.py`.
+- **Never write a credential into a file, a test, a fixture, a log line, a comment or
+  a commit.** Not even a placeholder that looks real.
+- `.env.example` is committed with empty values. `.env` is gitignored.
+- Never log cookie values or request bodies containing credentials.
+- Discover login form field names by parsing the login page. Do not guess and do not
+  hardcode.
+
+---
+
+## 6. Consent
+
+The data belongs to the plant. Before anything is published:
+
+- Written data-use consent is required, covering telemetry, batch log and publication.
+- Absolute yields and feed masses may be commercially sensitive. Normalisation and
+  anonymisation are offered, not assumed.
+
+If asked to do something with this data that goes beyond building and evaluating this
+system, flag it rather than proceeding.
+
+---
+
+## 7. Code standards
+
+**Python**
+- 3.12+, full type hints, `ruff` and `mypy` clean.
+- pydantic models for every boundary. `schemas.py` mirrors doc 03 exactly.
+- All SQL in `store/queries.py`. Nowhere else.
+- Pure functions for parsing and modelling, so they are testable without I/O.
+- No bare `except:`. Catch specific exceptions and log with context.
+- Docstrings state units for every physical quantity.
+
+**TypeScript**
+- `strict: true`. No `any`.
+- Types generated from OpenAPI by `make types`. Never hand-write response interfaces.
+- `snake_case` to `camelCase` conversion at the API client boundary only.
+
+**Tests**
+- The parser contract test against the saved HTML fixture is mandatory.
+- The batch 833 segmentation test is mandatory.
+- Test the idempotency of every upsert.
+- Test that a diverging ODE solve is caught and falls back.
+- Test that a forbidden panel path raises.
+
+**Commits**
+- Small, one concern each. Reference the task ID from doc 10, e.g. `D1.3: header-driven telemetry parser`.
+- Never commit `.env`, `data/`, `artifacts/`, or `node_modules/`.
+
+---
+
+## 8. When you are unsure
+
+Ask rather than guess, specifically about:
+
+- Any physical constant. **Never invent a literature value.** `cp_charge`, the `Ea`
+  plausible range, anything cited: find a real source or ask. A fabricated constant in
+  a paper is a serious problem.
+- Whether an Excel column maps to a schema field, when the match is not obvious.
+- Whether a panel endpoint mutates state.
+- Whether a modelling choice constitutes leakage.
+- Anything where a spec is ambiguous rather than merely unwritten.
+
+Do not fill a gap in the specs with a plausible-sounding invention. An unanswered
+question is cheap; a wrong assumption baked into results is expensive.
+
+---
+
+## 9. Two framing reminders
+
+**Call it a digital shadow, not a digital twin,** in anything academic. Data flows
+one way and nothing actuates the plant. Kritzinger et al. (2018) is the citation. The
+public-facing name can be whatever the plant prefers; the paper cannot.
+
+**The 3D scene is not decoration.** Telemetry arrives every four minutes and the scene
+renders at 60 fps. The gap is bridged by running the fitted model forward, which means
+what is on screen is the model's output, and the divergence between projection and the
+next real sample is the fault signal itself. Build it with that understanding, because
+it is also the argument the paper makes.

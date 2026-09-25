@@ -1,0 +1,32 @@
+{
+  "name": "htpp-shadow",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "types": "openapi-typescript http://127.0.0.1:8000/openapi.json -o lib/api-types.ts"
+  },
+  "dependencies": {
+    "@react-three/drei": "9.117.3",
+    "@react-three/fiber": "8.17.10",
+    "@react-three/postprocessing": "2.16.3",
+    "next": "14.2.18",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "recharts": "2.15.0",
+    "three": "0.170.0",
+    "zustand": "5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.16",
+    "@types/react-dom": "18.3.5",
+    "@types/three": "0.170.0",
+    "autoprefixer": "10.4.20",
+    "openapi-typescript": "7.4.4",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.2"
+  }
+}

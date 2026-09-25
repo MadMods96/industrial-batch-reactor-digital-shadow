@@ -1,0 +1,32 @@
+sheet: "Sheet1"
+header_row: 2
+# Plant Excel often has Date + Reactor label, not panel batch numbers.
+# batch_no is resolved by matching log_date + machine to panel batches.
+# Customer-specific reactor labels belong in .env HTPP_MACHINE_ALIASES
+# or optional column_map.local.yaml (gitignored).
+columns:
+  machine_id: ["Reactor", "Machine", "Machine ID"]
+  batch_no: ["Batch", "Batch No", "Batch Number"]
+  log_date: ["Date"]
+  feed_mass_kg: ["Loading", "Input (kg)", "Feed", "Charge kg"]
+  moisture_pct: ["Net Moisture", "Moisture %", "Moisture"]
+  feedstock_type: ["Material", "Feedstock"]
+  feedstock_mix_pct: ["Mix %", "Non-tyre %"]
+  shred_kg: ["Shred"]
+  mix_kg: ["Mix"]
+  oil_mass_kg: ["Oil(kg)", "Oil (kg)", "Oil"]
+  carbon_mass_kg: ["Carbon(kg)", "Carbon (kg)", "Carbon Black", "CB"]
+  steel_mass_kg: ["Steel(kg)", "Steel (kg)", "Wire", "Steel"]
+  gas_mass_kg: ["Gas(kg)", "Gas (kg)"]
+  operator: ["Operator", "Shift"]
+  notes: ["Remarks", "Notes"]
+machine_name_to_id:
+  "R1": 1093
+  "Reactor 1": 1093
+  "Unit 1": 1093
+  "R2": 1094
+  "Reactor 2": 1094
+  "Unit 2": 1094
+  "R3": 1146
+  "Reactor 3": 1146
+  "Unit 3": 1146
