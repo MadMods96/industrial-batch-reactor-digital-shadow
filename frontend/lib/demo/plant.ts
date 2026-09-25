@@ -138,26 +138,37 @@ export function demoSimulate(body: {
   const feed = body.feed_mass_kg;
   const moisture = body.moisture_pct;
   const peak = body.target_peak_tr_c;
-  const oil = Math.max(28, Math.min(52, 48 - moisture * 1.1 + (feed - 10000) * 0.0004));
-  const carbon = Math.max(20, Math.min(40, 35 - (peak - 450) * 0.02));
-  const steel = Math.max(8, Math.min(18, 12 + moisture * 0.2));
-  const duration = Math.round(360 + feed / 80 + moisture * 8 + (peak - 430) * 0.4);
+  const mid = body.machine_id ?? 1093;
+  // Per-reactor bias so side-by-side compare is not identical in demo mode.
+  const bias =
+    mid === 1093 ? { oil: 0, carbon: 0.4, steel: -0.2, time: 0, heat: "R1 tends slightly slower to peak." }
+    : mid === 1094 ? { oil: 1.2, carbon: -0.6, steel: 0.1, time: -18, note: "R2 usually clearer oil cut in plant logs." }
+    : { oil: -0.8, carbon: 0.8, steel: 0.4, time: 12, note: "R3 often longer cool-down in demo history." };
+
+  const oil = Math.max(28, Math.min(52, 48 - moisture * 1.1 + (feed - 10000) * 0.0004 + bias.oil));
+  const carbon = Math.max(20, Math.min(40, 35 - (peak - 450) * 0.02 + bias.carbon));
+  const steel = Math.max(8, Math.min(18, 12 + moisture * 0.2 + bias.steel));
+  const duration = Math.round(360 + feed / 80 + moisture * 8 + (peak - 430) * 0.4 + bias.time);
   const warnings: string[] = [];
   if (feed < 4500 || feed > 14000) warnings.push("Feed mass is outside the usual demo range.");
   if (moisture < 1 || moisture > 12) warnings.push("Moisture is outside the usual demo range.");
   if (peak < 400 || peak > 500) warnings.push("Peak Tr is outside the usual demo range.");
+  // Soft nudge when inputs sit near edge of logged band shown in the UI copy.
+  if (feed < 9500 || feed > 12900 || moisture > 11 || moisture < 3) {
+    warnings.push("Outside typical history — treat as a rough guide.");
+  }
   return {
     input_echo: body,
     model_version: "vercel-demo-v1",
     predicted_total_duration_min: duration,
     extrapolation_warnings: [
-      "Vercel demo estimate (reduced-order stand-in). Connect a Python API for fitted models.",
+      `Vercel demo estimate for ${mid === 1093 ? "R1" : mid === 1094 ? "R2" : "R3"}. ${bias.note}`,
       ...warnings,
     ],
     phases: [
-      { process_state: "heating", duration_min: Math.round(duration * 0.35) },
-      { process_state: "holding", duration_min: Math.round(duration * 0.4) },
-      { process_state: "cooling", duration_min: Math.round(duration * 0.25) },
+      { process_state: "heating", duration_min: Math.round(duration * (mid === 1094 ? 0.32 : 0.35)) },
+      { process_state: "holding", duration_min: Math.round(duration * (mid === 1094 ? 0.43 : 0.4)) },
+      { process_state: "cooling", duration_min: Math.round(duration * (mid === 1146 ? 0.28 : 0.25)) },
     ],
     predicted_yields: {
       oil_yield_pct: { p10: oil - 3, p50: oil, p90: oil + 3 },

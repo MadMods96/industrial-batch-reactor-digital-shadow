@@ -162,7 +162,9 @@ function ReactorCard({ row }: { row: MachineResult }) {
   }
 
   const hours = (result.predictedTotalDurationMin / 60).toFixed(1);
-  const warn = result.extrapolationWarnings?.length ?? 0;
+  const caution = (result.extrapolationWarnings || []).some((w) =>
+    /outside typical|outside the usual/i.test(w),
+  );
 
   return (
     <article className="panel sim-reactor-card">
@@ -171,7 +173,7 @@ function ReactorCard({ row }: { row: MachineResult }) {
         <div className="kicker">{row.label}</div>
       </header>
 
-      {warn > 0 && (
+      {caution && (
         <div className="sim-reactor-caution">Outside typical history — treat as a rough guide.</div>
       )}
 
