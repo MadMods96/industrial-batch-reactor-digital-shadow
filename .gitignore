@@ -6,7 +6,7 @@ credentials.json
 **/credentials.json
 column_map.local.yaml
 backend/src/htpp/ingest/column_map.local.yaml
-data/
+/data/
 backend/artifacts/
 backend/.venv/
 .venv/
