@@ -1,12 +1,10 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import { Nav } from "@/components/ui/Nav";
-import { AssistantDock } from "@/components/ui/AssistantDock";
-import { DemoBanner } from "@/components/ui/DemoBanner";
 
 export const metadata = {
   title: "HTPP Digital Shadow",
-  description: "Digital shadow of industrial batch reactors (demo / Excel seed)",
+  description: "Read-only digital shadow of industrial batch reactors",
 };
 
 export const viewport = {
@@ -28,11 +26,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <header className="app-chrome">
-          <DemoBanner />
           <Nav />
         </header>
         {children}
-        <AssistantDock />
       </body>
     </html>
   );

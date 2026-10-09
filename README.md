@@ -1,12 +1,12 @@
 # HTPP Digital Shadow
 
-Live **digital shadow** of industrial batch reactors: sparse PLC/panel telemetry → reduced-order models → 3D floor view, yield insights, and what-if simulation.
+Live **digital shadow** of industrial batch reactors: sparse PLC/panel telemetry → reduced-order models → 3D floor view and data quality.
 
-This is **not** a digital twin. Data flows one way (plant → software). The system never writes setpoints or actuates equipment.
+This is **not** a digital twin. Data flows one way (plant → software). The system never writes setpoints or actuates equipment. No LLM / Ask / What-if in this build.
 
-| Floor (live) | Insights | Ask | What-if | Data quality |
-|---|---|---|---|---|
-| ![Floor](docs/screenshots/01-floor-live.png) | ![Insights](docs/screenshots/02-insights-modal.png) | ![Ask](docs/screenshots/03-ask-assistant.png) | ![What-if](docs/screenshots/04-what-if-compare.png) | ![Data](docs/screenshots/05-data-coverage.png) |
+| Floor (live) | Insights | Data quality |
+|---|---|---|
+| ![Floor](docs/screenshots/01-floor-live.png) | ![Insights](docs/screenshots/02-insights-modal.png) | ![Data](docs/screenshots/05-data-coverage.png) |
 
 ---
 
@@ -14,8 +14,8 @@ This is **not** a digital twin. Data flows one way (plant → software). The sys
 
 - **Class:** digital *shadow* (Kritzinger et al., 2018) — automatic one-way coupling
 - **Constraint:** ~4-minute industrial telemetry (not lab-dense signals)
-- **Method:** reduced-order thermal / phase models + yield estimates with intervals
-- **Ops layer:** live 3D scene, coverage/gap audit, operator Q&A over plant data only
+- **Method:** reduced-order thermal / phase models + yield features from logs
+- **Ops layer:** live 3D scene, rule-based insights, coverage/gap audit
 
 ---
 
@@ -23,10 +23,8 @@ This is **not** a digital twin. Data flows one way (plant → software). The sys
 
 | Area | Description |
 |------|-------------|
-| **Floor** | Live 3D reactors with status tower lights and process cards |
-| **Insights** | Plain-language alerts (gaps, yields, faults) + optional AI plant brief |
-| **Ask** | Full-screen Q&A over shadow data (read-only) |
-| **What-if** | Side-by-side R1/R2/R3 estimates for charge / moisture / peak Tr |
+| **Floor** | Live 3D reactors from panel WebSocket ticks |
+| **Insights** | Rule-based alerts (gaps, yields, faults) — no AI |
 | **Batches / Data** | History and telemetry coverage |
 
 ---
@@ -53,20 +51,23 @@ See [docs/TELEMETRY.md](docs/TELEMETRY.md) for formats and Excel mass-log column
 
 ---
 
-## Quick start (local)
+## Quick start (local live)
 
 ```powershell
 cd htpp-digital-twin
 python -m pip install -e "./backend[dev]"
 copy .env.example .env
-# fill panel credentials and optional Anthropic keys — never commit .env
+# fill panel credentials — never commit .env
 
 cd frontend
 npm install
 cd ..
 
 $env:PYTHONPATH = "backend/src"
-python -m htpp.cli seed
+python -m htpp.cli init-db
+python -m htpp.cli ingest
+python -m htpp.cli excel
+python -m htpp.cli build
 python -m htpp.cli fit
 python -m htpp.cli api
 ```
@@ -78,7 +79,9 @@ cd frontend
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000 — Floor should show `live` and real Tr/Pr from the panel.
+
+Optional seed (offline fixture only): `python -m htpp.cli seed` — do **not** use for plant demos.
 
 ---
 
@@ -88,29 +91,32 @@ All secrets and site labels live in **`.env`** (see `.env.example`):
 
 - Panel username / password / base URL
 - Machine ids and **display labels** (`HTPP_MACHINE_LABELS`)
-- Excel reactor-name aliases (`HTPP_MACHINE_ALIASES`) — match your workbook text
-- Anthropic key / workspace (optional Ask assistant)
-- CORS + public API/WS URLs for the frontend
+- Excel reactor-name aliases (`HTPP_MACHINE_ALIASES`)
+- `NEXT_PUBLIC_API_BASE_URL` / `NEXT_PUBLIC_WS_URL` → FastAPI host
+- `HTPP_API_CORS_ORIGINS` → frontend origin
 
-Customer or site names must **not** be hardcoded in source. Put them only in `.env` or `column_map.local.yaml` (gitignored).
+Customer or site names must **not** be hardcoded in source.
 
 ---
 
-## Deploy (recommended)
+## Deploy
 
-**Vercel demo** (current): Excel-seeded Batches / What-if + synthetic floor. Persistent **DEMO DATA** banner. No Anthropic calls from the site — use **Claude Desktop + MCP** ([docs/MCP-CLAUDE.md](docs/MCP-CLAUDE.md)).
+| Piece | Where |
+|-------|--------|
+| **Frontend** (Next.js) | Vercel — Root Directory `frontend`; set `NEXT_PUBLIC_*` to your API |
+| **Backend** (FastAPI + DuckDB + WebSocket + ingest) | Render / Railway / Fly / VM with disk |
 
-Turn on **Vercel Deployment Protection** until written plant consent exists (Fix Brief 003 P0-1).
+Vercel alone cannot run live panel ingest + WebSockets. Point the frontend at a long-running API.
 
-Optional later: FastAPI + DuckDB on a small VM for live panel ingest; set `NEXT_PUBLIC_API_BASE_URL` and retire mock routes.
+See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ---
 
 ## Repo hygiene
 
-- `.env` is gitignored — rotate any key that was ever pasted into chat or screenshots
+- `.env` is gitignored — rotate any key that was ever pasted into chat
 - Plant Excel files stay out of git (`*.xlsx` ignored except test fixtures)
-- Specs under `docs/` are the deeper contracts; start with this README + `TELEMETRY.md`
+- Specs under `docs/`; start with this README + `TELEMETRY.md`
 - See [docs/SECURITY.md](docs/SECURITY.md) before any public push
 
 ---

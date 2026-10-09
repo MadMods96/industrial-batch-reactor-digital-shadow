@@ -150,17 +150,25 @@ export function sampleTr(machine: MachineLive, now: number): number {
 
 export function sampleMachine(machine: MachineLive, now: number) {
   const stale = machine.stalenessS > 600 || machine.online === false;
-  // Prefer measured for HUD cards (Fix Brief 003 F1). Dense is only a hold buffer.
-  const tr = machine.measured.trC ?? 0;
-  const ts = machine.measured.tsC ?? 0;
-  const pr = machine.measured.prBar ?? 0;
-  const ps = machine.measured.psBar ?? 0;
+  const step = machine.dense.stepS || 1;
+  const horizon = machine.dense.horizonS || machine.dense.trC.length || 1;
+  const elapsed = Math.max(0, (now - machine.anchorMs) / 1000);
+  const idx = stale
+    ? 0
+    : Math.max(0, Math.min(machine.dense.trC.length - 1, Math.floor(Math.min(elapsed, horizon - 1e-6) / step)));
+  let tr = machine.dense.trC[idx] ?? machine.measured.trC ?? 0;
+  if (!stale && machine.blendUntil > now && machine.blendFromTr != null) {
+    const u = 1 - (machine.blendUntil - now) / 400;
+    const ease = u * u * (3 - 2 * u);
+    tr = machine.blendFromTr + (tr - machine.blendFromTr) * ease;
+  }
   return {
     tr,
-    ts,
-    pr,
-    ps,
-    process: machine.processState,
+    ts: machine.dense.tsC[idx] ?? machine.measured.tsC ?? 0,
+    // Cards: measured panel sample (Brief 003 F1). Scene dense still drives Tr animation above.
+    pr: machine.measured.prBar ?? machine.dense.prBar[idx] ?? 0,
+    ps: machine.measured.psBar ?? machine.dense.psBar[idx] ?? 0,
+    process: stale ? machine.processState : machine.dense.processState[idx] ?? machine.processState,
     fault: machine.faultState,
     stale,
     roh: machine.measured.rohCPerMin ?? 0,

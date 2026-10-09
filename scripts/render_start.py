@@ -1,4 +1,4 @@
-"""Boot the API on Render: seed demo data if empty, then serve."""
+"""Boot the API: prefer live DB; seed only if HTPP_ALLOW_SEED=1."""
 
 from __future__ import annotations
 
@@ -25,12 +25,13 @@ def main() -> None:
     (ROOT / "data").mkdir(parents=True, exist_ok=True)
 
     if not db.exists():
-        print("no database yet — seeding demo fixture + fitting models")
-        run("seed")
-        run("fit")
-    elif not (artifacts / "LATEST").exists():
-        print("database present but no model artefacts — fitting")
-        run("fit")
+        if os.environ.get("HTPP_ALLOW_SEED") == "1":
+            print("no database — seeding fixture (HTPP_ALLOW_SEED=1)")
+            run("seed")
+            run("fit")
+        else:
+            print("no database — init-db only (set HTPP_ALLOW_SEED=1 for offline fixture)")
+            run("init-db")
 
     run("api")
 

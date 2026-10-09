@@ -51,7 +51,7 @@ export default function OverviewPage() {
           <div className="floor-brand-mark">HTPP</div>
           <div className="mono floor-status-line">
             <span className={`dot ${status === "live" ? "ok" : "stale"}`} />
-            DEMO · {status === "live" ? "seed synced" : status} · linear_fallback · IST
+            {status} · IST
           </div>
           <div className="stack-legend" aria-label="Tower light meaning">
             <span><i className="stack-dot green" /> Running</span>
@@ -95,13 +95,10 @@ export default function OverviewPage() {
                     <Metric label="Ps" value={<ValueWithUnit value={row?.ps} unit="bar" digits={2} />} />
                   </div>
                   <div className="machine-card-foot">
-                    {machine?.batchNo != null ? `Batch ${machine.batchNo}` : "No panel batch #"}
+                    {machine?.batchNo != null ? `Batch ${machine.batchNo}` : "Batch —"}
                     <span>·</span>
                     <ValueWithUnit value={machine?.batchElapsedMin} unit="min" digits={0} />
-                    <span className="stale-tag">demo</span>
-                    {machine?.interpolationMode ? (
-                      <span className="stale-tag">{machine.interpolationMode}</span>
-                    ) : null}
+                    {row?.stale ? <span className="stale-tag">stale</span> : null}
                   </div>
                 </button>
               );

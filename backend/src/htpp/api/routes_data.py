@@ -200,6 +200,18 @@ def batch_detail(batch_key: str) -> dict:
     }
 
 
+@router.get("/insights")
+def insights() -> dict:
+    """Rule-based plant notes only — no LLM."""
+    from htpp.assistant.context import plant_briefing, rule_insights
+
+    briefing = plant_briefing()
+    return {
+        "insights": rule_insights(briefing),
+        "generated_at": briefing.get("generated_at"),
+    }
+
+
 @router.get("/data/coverage")
 def coverage() -> dict:
     con = _con()

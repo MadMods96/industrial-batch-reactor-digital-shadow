@@ -7,72 +7,64 @@ import { apiGet } from "@/lib/api";
 
 type Batch = {
   batchKey: string;
-  reactor?: string;
   machineId: number;
   batchNo: number | null;
-  logDate?: string;
   totalDurationMin: number | null;
   peakTrC: number | null;
   hadFault: boolean | null;
   usableForTraining: boolean | null;
-  inTrainingSplit?: boolean;
   oilYieldPct: number | null;
   qualityFlags: string[];
+};
+
+const LABELS: Record<number, string> = {
+  1093: "R1",
+  1094: "R2",
+  1146: "R3",
 };
 
 export default function BatchesPage() {
   const [rows, setRows] = useState<Batch[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [reactor, setReactor] = useState<string>("all");
-  const [sort, setSort] = useState<"date" | "oil" | "duration">("date");
+  const [machine, setMachine] = useState<string>("all");
 
   useEffect(() => {
-    apiGet<{ batches: Batch[] }>("/api/batches?limit=500")
+    apiGet<{ batches: Batch[] }>("/api/batches?limit=200")
       .then((data) => setRows(data.batches))
       .catch((err: Error) => setError(err.message));
   }, []);
 
   const filtered = useMemo(() => {
-    let list = rows;
-    if (reactor !== "all") list = list.filter((r) => (r.reactor || "").toUpperCase() === reactor);
-    const copy = [...list];
-    copy.sort((a, b) => {
-      if (sort === "oil") return (b.oilYieldPct ?? -1) - (a.oilYieldPct ?? -1);
-      if (sort === "duration") return (b.totalDurationMin ?? -1) - (a.totalDurationMin ?? -1);
-      return (b.logDate || b.batchKey).localeCompare(a.logDate || a.batchKey);
-    });
-    return copy;
-  }, [rows, reactor, sort]);
+    if (machine === "all") return rows;
+    return rows.filter((r) => String(r.machineId) === machine);
+  }, [rows, machine]);
 
   return (
     <main className="page">
       <div className="kicker">Batch explorer</div>
       <h1 style={{ fontWeight: 500 }}>Every batch the shadow has seen</h1>
-      <p style={{ color: "var(--muted)", maxWidth: "70ch" }}>
-        Excel mass log: duration = sum of phase hours × 60. Carbon is a plant estimate.
-        Water recovered is an output. Keys are <span className="mono">R1-YYYY-MM-DD</span> until panel join is confirmed.
+      <p style={{ color: "var(--muted)", maxWidth: "62ch" }}>
+        Assembled from live panel telemetry and optional Excel mass log. Read-only digital shadow.
       </p>
-      {error && <div className="banner">{error}</div>}
+      {error && <div className="banner">{error}. Is the API running?</div>}
 
       <div className="batch-filters">
         <label>
           Reactor{" "}
-          <select value={reactor} onChange={(e) => setReactor(e.target.value)}>
+          <select value={machine} onChange={(e) => setMachine(e.target.value)}>
             <option value="all">All</option>
-            <option value="R1">R1</option>
-            <option value="R2">R2</option>
-            <option value="R3">R3</option>
-          </select>
-        </label>
-        <label>
-          Sort{" "}
-          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-            <option value="date">Date</option>
-            <option value="oil">Oil yield</option>
-            <option value="duration">Duration</option>
+            <option value="1093">R1</option>
+            <option value="1094">R2</option>
+            <option value="1146">R3</option>
           </select>
         </label>
       </div>
+
+      {!filtered.length && !error && (
+        <div className="panel" style={{ padding: 16 }}>
+          No batches yet. Run ingest / excel assemble on the API host.
+        </div>
+      )}
 
       <div className="panel table-wrap">
         <table>
@@ -83,7 +75,7 @@ export default function BatchesPage() {
               <th>Duration</th>
               <th>Peak Tr</th>
               <th>Oil yield</th>
-              <th>Split</th>
+              <th>Training</th>
               <th>Flags</th>
             </tr>
           </thead>
@@ -93,7 +85,7 @@ export default function BatchesPage() {
                 <td>
                   <Link href={`/batches/${encodeURIComponent(row.batchKey)}`}>{row.batchKey}</Link>
                 </td>
-                <td>{row.reactor ?? "—"}</td>
+                <td>{LABELS[row.machineId] ?? row.machineId}</td>
                 <td>
                   <ValueWithUnit value={row.totalDurationMin} unit="min" digits={0} />
                 </td>
@@ -103,7 +95,7 @@ export default function BatchesPage() {
                 <td>
                   <ValueWithUnit value={row.oilYieldPct} unit="%" />
                 </td>
-                <td>{row.inTrainingSplit ? "train" : "holdout"}</td>
+                <td>{row.usableForTraining ? "yes" : "no"}</td>
                 <td className="mono" style={{ whiteSpace: "normal", maxWidth: 220 }}>
                   {row.qualityFlags?.length ? row.qualityFlags.join(", ") : "—"}
                 </td>

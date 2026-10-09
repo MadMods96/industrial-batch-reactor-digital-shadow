@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
-import { MarkdownText } from "@/components/ui/MarkdownText";
 
 export type Insight = {
   severity: "ok" | "warning" | "critical" | string;
@@ -12,6 +11,7 @@ export type Insight = {
 
 const PREVIEW = 3;
 
+/** Rule-based plant notes from the API (no LLM). */
 export function FloorInsights() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -20,18 +20,10 @@ export function FloorInsights() {
   useEffect(() => {
     let alive = true;
     const load = () => {
-      apiGet<{ insights: Insight[]; claudeSummary?: string }>("/api/assistant/insights")
+      apiGet<{ insights: Insight[] }>("/api/insights")
         .then((data) => {
           if (!alive) return;
-          const rows = [...(data.insights || [])];
-          if (data.claudeSummary) {
-            rows.unshift({
-              severity: "ok",
-              title: "Plant brief",
-              detail: data.claudeSummary,
-            });
-          }
-          setInsights(rows);
+          setInsights(data.insights || []);
           setError(null);
         })
         .catch((err: Error) => {
@@ -70,7 +62,7 @@ export function FloorInsights() {
 
         {error && <p className="assistant-note">{error}</p>}
         {!error && !insights.length && (
-          <p className="assistant-note">No insights yet. Start the API and they will show up here.</p>
+          <p className="assistant-note">No insights yet. Waiting for live telemetry.</p>
         )}
 
         <div className="insights-half-list">
@@ -79,13 +71,13 @@ export function FloorInsights() {
               <span className={`dot ${item.severity === "ok" ? "ok" : item.severity}`} />
               <div>
                 <strong>{item.title}</strong>
-                <MarkdownText text={item.detail} />
+                <p>{item.detail}</p>
               </div>
             </article>
           ))}
         </div>
 
-        {insights.length > 0 && (
+        {insights.length > PREVIEW && (
           <button type="button" className="insights-view-all" onClick={() => setOpenAll(true)}>
             View all ({insights.length})
           </button>
@@ -93,34 +85,21 @@ export function FloorInsights() {
       </section>
 
       {openAll && (
-        <div className="insights-modal-backdrop" role="presentation" onClick={() => setOpenAll(false)}>
-          <div
-            className="insights-modal panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="All plant insights"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="insights-modal-head">
-              <div>
-                <div className="kicker">Live insights</div>
-                <strong>All alerts & plant notes</strong>
-              </div>
-              <div className="insights-modal-actions">
-                <span className="mono floor-insights-count">{insights.length}</span>
-                <button type="button" className="assistant-x" onClick={() => setOpenAll(false)} aria-label="Close">
-                  ×
-                </button>
-              </div>
-            </header>
-            {error && <p className="assistant-note">{error}</p>}
+        <div className="insights-modal-backdrop" onClick={() => setOpenAll(false)}>
+          <div className="insights-modal panel" onClick={(e) => e.stopPropagation()}>
+            <div className="insights-modal-head">
+              <strong>All insights</strong>
+              <button type="button" className="assistant-x" onClick={() => setOpenAll(false)} aria-label="Close">
+                ×
+              </button>
+            </div>
             <div className="insights-modal-grid">
               {insights.map((item) => (
-                <article key={`${item.title}-${item.detail.slice(0, 48)}`} className="floor-insight insights-modal-card">
+                <article key={`${item.title}-${item.detail.slice(0, 40)}`} className="insights-modal-card floor-insight">
                   <span className={`dot ${item.severity === "ok" ? "ok" : item.severity}`} />
                   <div>
                     <strong>{item.title}</strong>
-                    <MarkdownText text={item.detail} />
+                    <p>{item.detail}</p>
                   </div>
                 </article>
               ))}

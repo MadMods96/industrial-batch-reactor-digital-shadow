@@ -12,10 +12,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from htpp.api.routes_chat import router as chat_router
 from htpp.api.routes_data import router as data_router
 from htpp.api.routes_models import router as models_router
-from htpp.api.routes_simulate import router as simulate_router
 from htpp.api.ws_live import router as ws_router
 from htpp.config import settings
 from htpp.store.db import connect, migrate
@@ -83,8 +81,6 @@ def create_app() -> FastAPI:
             },
         )
 
-    # Demo-friendly CORS: frontend fetch() does not send cookies.
-    # Still honor HTPP_API_CORS_ORIGINS when set; otherwise allow all.
     origins = settings.cors_origins
     app.add_middleware(
         CORSMiddleware,
@@ -96,8 +92,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(data_router, prefix="/api")
     app.include_router(models_router, prefix="/api")
-    app.include_router(simulate_router, prefix="/api")
-    app.include_router(chat_router, prefix="/api")
     app.include_router(ws_router)
     return app
 

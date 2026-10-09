@@ -1,5 +1,4 @@
-# Render Blueprint — https://dashboard.render.com/blueprints
-# Connect this GitHub repo, then set secrets in the dashboard (panel / Anthropic).
+# Render Blueprint — live digital shadow API (no AI)
 
 services:
   - type: web
@@ -16,16 +15,15 @@ services:
         value: "3.12.8"
       - key: HOST
         value: "0.0.0.0"
-      # Demo-safe default: no live panel pulls until you set credentials.
+      # Live panel pulls every HTPP_INCREMENTAL_CRON_MINUTES
       - key: HTPP_DISABLE_SCHEDULER
-        value: "1"
+        value: "0"
       - key: HTPP_DB_PATH
         value: data/htpp.duckdb
       - key: HTPP_ARTIFACT_DIR
         value: backend/artifacts
       - key: HTPP_PLANT_LABEL
         value: Plant Floor
-      # After Vercel deploy, replace with your real frontend URL (comma-separated OK).
       - key: HTPP_API_CORS_ORIGINS
         sync: false
       - key: HTPP_PANEL_BASE_URL
@@ -34,7 +32,7 @@ services:
         sync: false
       - key: HTPP_PANEL_PASSWORD
         sync: false
-      - key: HTPP_ANTHROPIC_API_KEY
-        sync: false
-      - key: HTPP_ANTHROPIC_WORKSPACE_ID
-        sync: false
+      - key: HTPP_MACHINE_IDS
+        value: "1093,1094,1146"
+      - key: HTPP_MACHINE_LABELS
+        value: "1093:R1 Unit 1,1094:R2 Unit 2,1146:R3 Unit 3"
